@@ -23,6 +23,13 @@ public class BuildManager : MonoBehaviour
 
     void Update()
     {
+        if (ModeSwitcher.Instance.IsInFPS && (ghost || buildUI.activeSelf))
+        {
+            CancelBuild();
+            buildUI.SetActive(false);
+            return;
+        }
+
         if (Input.GetKeyDown(buildUIToggleKey)) buildUI.SetActive(!buildUI.activeSelf);
 
         /* ============ DELETE TOOL (works even when not building) ============ */

@@ -5,19 +5,6 @@ Hit **Tab** any time (coming soon) to roam your creation in first-person “Enjo
 
 ---
 
-## ✨ Current Feature Set
-| Milestone | Commit Tag | What You Can Do |
-|-----------|------------|-----------------|
-| **Init project** | `init-project` | Clean Git repo, Unity .gitignore, first commit. |
-| **Scene scaffold** | `scene-scaffold` | Folder hygiene, green grass ground, baseline lighting, `CameraRig`. |
-| **RTS camera** | `rts-camera` | WASD / middle-drag pan · scroll zoom (inverted) · RMB rotate (Scene-view style). |
-| **Grid system** | `grid-system` | Visible green 2 m grid & `Grid.I.Snap()` helper. |
-| **Part system** | `part-assets` | `PartData` ScriptableObject, ghost-preview placement, Wall & Tower samples. |
-| **Pretty UI** | `build-ui` | Bottom build bar with icons, hotkeys (1–9), tooltips, Sprite-swap styling. |
-| **Ghost prefab refactor** | `ghost-prefab` | Each `PartData` may now specify a dedicated low-poly ghost prefab. |
-
----
-
 ## ▶️ Quick Start
 
 ```bash
@@ -54,24 +41,13 @@ Assets/
 ├─ Art/            # future textures, models
 ├─ Materials/
 ├─ Prefabs/
-│   ├─ Wall.prefab
-│   └─ Tower.prefab
+│   ├─ Ghosts
+│   └─ Parts
+│   └─ UI
 ├─ Parts/          # ScriptableObjects (PartData)
 ├─ Scenes/
 │   └─ Castle Playground.unity
 ├─ Scripts/
-│   ├─ Camera/     # RtsCamera.cs (MIT)
-│   ├─ Grid.cs
-│   ├─ BuildManager.cs
-│   ├─ PartData.cs
-│   └─ UI/
-│       ├─ BuildUIButton.cs
-│       └─ BuildHotkeys.cs
-└─ UI/
-    ├─ Sprites/    # 9-slice panel & button sprites
-    ├─ Icons/      # Part icons
-    └─ Prefabs/
-        └─ BuildButton.prefab
 
 ## 🛠️ Building & Contributing
 
@@ -83,15 +59,7 @@ No large binaries; art gets its own Git LFS track when needed.
 
 ## 📅 Roadmap
 
-| Next Up                     | Description                                                      |
-| --------------------------- | ---------------------------------------------------------------- |
-| **Rotate / Delete tool**    | `R` to rotate ghost 90°, `Delete` to remove hovered piece.       |
-| **Enjoy Mode**              | Import Unity Starter Assets – First Person; toggle with **Tab**. |
-| **Furniture placement**     | Surface-snap tables, chairs (new `FurnitureData`).               |
-| **Stairs & Multilevel**     | `level` integer grid snap, stairs prefab raises placement layer. |
-| **Secret doors & basement** | Interactable bookshelf pivot, underground room.                  |
-| **Save / Load**             | JSON persistence (`Ctrl+S / Ctrl+L`).                            |
-| **Runtime wall painting**   | Brush tool via Polybrush or custom shader.                       |
+Can view at [TODO.md](TODO.md)
 
 ## ⚖️ Licensing & Credits
 
