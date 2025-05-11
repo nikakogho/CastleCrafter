@@ -12,9 +12,15 @@ public class BuildManager : MonoBehaviour
     [SerializeField] KeyCode rotateLeftKey = KeyCode.Q;
     [SerializeField] KeyCode rotateRightKey = KeyCode.E;
 
+    [SerializeField] KeyCode RaiseLevel = KeyCode.PageUp;
+    [SerializeField] KeyCode LowerLevel = KeyCode.PageDown;
+
     public GameObject tooltip;
 
     PartData currentPart;
+
+    int currentLevel = 0;
+    
     GameObject ghost;
     int ghostRotation = 0;
 
@@ -36,14 +42,20 @@ public class BuildManager : MonoBehaviour
 
         if (Input.GetKeyDown(buildUIToggleKey)) buildUI.SetActive(!buildUI.activeSelf);
 
+        /* ============ Levels ============ */
+        if (Input.GetKeyDown(RaiseLevel) && currentLevel < Grid.Instance.levels.Count - 1) currentLevel++;
+        if (Input.GetKeyDown(LowerLevel) && currentLevel > 0) currentLevel--;
+
         /* ============ DELETE TOOL (works even when not building) ============ */
         if (Input.GetKeyDown(KeyCode.Delete))
         {
             Ray deleteRay = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(deleteRay, out var deleteHit, 500f))
             {
-                if (deleteHit.collider.CompareTag("PlacedPart"))
-                    Destroy(deleteHit.collider.transform.root.gameObject);
+                var root = deleteHit.transform.root;
+
+                if (root.CompareTag("PlacedPart"))
+                    Destroy(root.gameObject);
             }
         }
         
@@ -60,7 +72,7 @@ public class BuildManager : MonoBehaviour
         if (!Physics.Raycast(ray, out RaycastHit hit, 500f, mask))
             return;
 
-        Vector3 snapPos = currentPart.snapToSurface ? hit.point + hit.normal * 0.01f : Grid.Instance.Snap(hit.point);
+        Vector3 snapPos = currentPart.snapToSurface ? hit.point + hit.normal * 0.01f : Grid.Instance.Snap(hit.point, currentLevel);
         if (ghost) ghost.transform.position = snapPos;
 
         /* Rotate ghost */
@@ -68,15 +80,25 @@ public class BuildManager : MonoBehaviour
         if (Input.GetKeyDown(rotateRightKey)) RotateGhost(90);
 
         /* Place */
-        if (Input.GetMouseButtonDown(0))
-        {
-            Instantiate(currentPart.prefab, snapPos, Quaternion.Euler(0, ghostRotation, 0));
-        }
+        if (Input.GetMouseButtonDown(0)) Place(snapPos);
 
         /* Cancel */
         if (Input.GetMouseButtonDown(1))
         {
             CancelBuild();
+        }
+    }
+
+    private void Place(Vector3 snapPosition)
+    {
+        Instantiate(currentPart.prefab, snapPosition, Quaternion.Euler(0, ghostRotation, 0));
+
+        if (currentPart.raisesLevel)
+        {
+            float currentY = Grid.Instance.YForLevel(currentLevel);
+            float newY = currentY + currentPart.raiseHeight;
+
+            currentLevel = Grid.Instance.AddLevel(newY);
         }
     }
 

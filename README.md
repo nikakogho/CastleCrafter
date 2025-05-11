@@ -31,9 +31,9 @@ Left-click to place, Right-click to cancel.
 | Select part                     | Click icon or **1–9**                            |
 | Place part                      | **Left-click**                                   |
 | Cancel ghost                    | **Right-click**                                  |
-|  Rotate ghost                   | **R**                                            |
-|  Delete placed part             | **Delete**                                       |
-|  Enjoy Mode                     | **Tab**                                          |
+| Rotate ghost                    | **R**                                            |
+| Delete placed part              | **Delete**                                       |
+| Enjoy Mode                      | **Tab**                                          |
 
 ## 🗂️ Project Layout
 

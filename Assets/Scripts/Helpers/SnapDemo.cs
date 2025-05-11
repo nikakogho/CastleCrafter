@@ -4,6 +4,6 @@ public class SnapDemo : MonoBehaviour
 {
     void Update()
     {
-        transform.position = Grid.Instance.Snap(transform.position);
+        transform.position = Grid.Instance.Snap(transform.position, 0);
     }
 }
