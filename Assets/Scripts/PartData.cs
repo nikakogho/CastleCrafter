@@ -6,6 +6,7 @@ public class PartData : ScriptableObject
     new public string name = "wall";
     public GameObject prefab;
     public GameObject ghostPrefab;
+    public bool snapToSurface;
     public Sprite icon;
     public Vector2Int footprint = Vector2Int.one;
 }
