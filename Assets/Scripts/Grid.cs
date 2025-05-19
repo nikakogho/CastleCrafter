@@ -1,67 +1,69 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using System.Collections.Generic;
 
 [ExecuteAlways]
 public class Grid : MonoBehaviour
 {
     public static Grid Instance;
-    [Min(0.1f)] public float cellSize = 2f;
-    
-    // Each entry is an absolute Y coordinate (0 = ground)
-    [HideInInspector] public List<float> levels = new List<float> { 0f };
+    public float cellSize = 2f;   // X-Z grid
+    public float levelStep = 2f;   // vertical spacing between floors
 
-    private const float LevelAllowedError = 0.01f;
+    readonly HashSet<Vector3Int> occupied = new();  // X,Ylevel,Z
 
     void Awake() => Instance = this;
-    void OnValidate() => Instance = this;
 
-    public float YForLevel(int level)
-        => levels[Mathf.Clamp(level, 0, levels.Count - 1)];
+    /* ---------- helpers ---------- */
+    public Vector3Int WorldToCell3D(Vector3 w)
+        => new(Mathf.RoundToInt(w.x / cellSize),
+               Mathf.RoundToInt(w.y / levelStep),
+               Mathf.RoundToInt(w.z / cellSize));
 
-    public int AddLevel(float y)
+    public Vector3 Snap(Vector3 w)
+        => new(Mathf.Round(w.x / cellSize) * cellSize,
+               Mathf.Round(w.y / levelStep) * levelStep,
+               Mathf.Round(w.z / cellSize) * cellSize);
+
+    static Vector2Int RotFoot(Vector2Int fp, int rotY)
+        => rotY % 180 == 0 ? fp : new Vector2Int(fp.y, fp.x);
+
+    /* ---------- queries ---------- */
+    public bool IsAreaFree(Vector3 worldPos, Vector2Int fp, int rotY)
     {
-        for (int i = 0; i < levels.Count; i++)
-        {
-            float error = Mathf.Abs(levels[i] - y);
+        Vector3Int baseCell = WorldToCell3D(worldPos);
+        Vector2Int size = RotFoot(fp, rotY);
 
-            if (error < LevelAllowedError) return i;
-        }
-
-        int insertAt = levels.BinarySearch(y);
-
-        if (insertAt < 0) insertAt = ~insertAt;
-
-        levels.Insert(insertAt, y);
-
-        return insertAt;
+        for (int dx = 0; dx < size.x; dx++)
+            for (int dz = 0; dz < size.y; dz++)
+                if (occupied.Contains(new(baseCell.x + dx,
+                                          baseCell.y,
+                                          baseCell.z + dz)))
+                    return false;
+        return true;
     }
 
-    /// <summary>Snaps any world position to the nearest grid cell on X-Z plane.</summary>
-    public Vector3 Snap(Vector3 worldPos, int level)
+    public void OccupyArea(Vector3 worldPos, Vector2Int fp, int rotY)
     {
-        float x = Mathf.Round(worldPos.x / cellSize) * cellSize;
-        float z = Mathf.Round(worldPos.z / cellSize) * cellSize;
-        return new Vector3(x, YForLevel(level), z);
+        if (!IsAreaFree(worldPos, fp, rotY)) return;
+
+        Vector3Int baseCell = WorldToCell3D(worldPos);
+        Vector2Int size = RotFoot(fp, rotY);
+
+        for (int dx = 0; dx < size.x; dx++)
+            for (int dz = 0; dz < size.y; dz++)
+                occupied.Add(new(baseCell.x + dx,
+                                 baseCell.y,
+                                 baseCell.z + dz));
     }
 
-#if UNITY_EDITOR
-    /* ---------- Draw green grid lines in the Scene view ---------- */
-    void OnDrawGizmos()
+    public void FreeArea(Vector3 worldPos, Vector2Int fp, int rotY)
     {
-        Gizmos.color = Color.green;
-        const int half = 50;
-        foreach (float y in levels)
-        {
-            for (int i = -half; i <= half; i++)
-            {
-                var a = new Vector3(i * cellSize, y, -half * cellSize);
-                var b = new Vector3(i * cellSize, y, half * cellSize);
-                var c = new Vector3(-half * cellSize, y, i * cellSize);
-                var d = new Vector3(half * cellSize, y, i * cellSize);
-                Gizmos.DrawLine(a, b);
-                Gizmos.DrawLine(c, d);
-            }
-        }
+        Vector3Int baseCell = WorldToCell3D(worldPos);
+        Vector2Int size = RotFoot(fp, rotY);
+
+        for (int dx = 0; dx < size.x; dx++)
+            for (int dz = 0; dz < size.y; dz++)
+                occupied.Remove(new(baseCell.x + dx,
+                                    baseCell.y,
+                                    baseCell.z + dz));
     }
-#endif
 }

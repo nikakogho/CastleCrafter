@@ -3,15 +3,21 @@
 [CreateAssetMenu(menuName = "CastleCrafter/Part")]
 public class PartData : ScriptableObject
 {
-    new public string name = "wall";
     public GameObject prefab;
     public GameObject ghostPrefab;
 
-    [Header("Placement")]
-    public bool snapToSurface;
-    public bool raisesLevel = false;   // ← tick for stairs / ladders
-    public float raiseHeight = 3f;     // metres added if raisesLevel
+    [Header("Grid")]
+    public bool useGrid = true;
+    public bool isFloor;
+    public Vector2Int footprint = Vector2Int.one;   // cells in X,Z
 
+    [Header("Free-surface parts")]
+    public bool alignToSurface = false;
+    public float surfaceOffset = 0.1f;
+
+    [Header("Size (metres, world space)")]
+    public float height = 2f;                 // Y size
+
+    [Header("UI")]
     public Sprite icon;
-    public Vector2Int footprint = Vector2Int.one;
 }

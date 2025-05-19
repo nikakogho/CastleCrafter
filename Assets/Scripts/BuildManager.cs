@@ -3,38 +3,38 @@ using UnityEngine.EventSystems;
 
 public class BuildManager : MonoBehaviour
 {
-    [Header("Placement Masks")]
-    [SerializeField] LayerMask surfaceMask;   // for surface-snap parts
+    [Header("Layers")]
+    [SerializeField] LayerMask supportMask;
+    [SerializeField] LayerMask blockMask; // solid objects that block placement
 
     [Header("Ghost & UI")]
     [SerializeField] Material fallbackGhostMat;
     [SerializeField] GameObject buildUI;
     [SerializeField] KeyCode buildUIToggleKey = KeyCode.B;
 
-    [Header("Controls")]
+    [Header("Rotate")]
     [SerializeField] KeyCode rotateLeftKey = KeyCode.Q;
     [SerializeField] KeyCode rotateRightKey = KeyCode.E;
-    [SerializeField] KeyCode raiseLevelKey = KeyCode.UpArrow;
-    [SerializeField] KeyCode lowerLevelKey = KeyCode.DownArrow;
 
+    [Header("Build UI")]
     public GameObject tooltip;
 
     PartData currentPart;
     GameObject ghost;
-    int ghostRotation = 0;
+    int ghostRotationY = 0;
 
-    int currentLevel = 0;  // index into Grid.Instance.levels
+    static readonly int _Color = Shader.PropertyToID("_BaseColor"); // URP / HDRP-safe
 
     public static BuildManager Instance { get; private set; }
 
-    private void Awake()
+    void Awake()
     {
         Instance = this;
     }
 
     void Update()
     {
-        // If in FPS mode, cancel any build & hide UI
+        // Cancel building if we enter FPS mode
         if (ModeSwitcher.Instance.IsInFPS && (ghost != null || buildUI.activeSelf))
         {
             CancelBuild();
@@ -46,129 +46,164 @@ public class BuildManager : MonoBehaviour
         if (Input.GetKeyDown(buildUIToggleKey))
             buildUI.SetActive(!buildUI.activeSelf);
 
-        // Change current level
-        if (Input.GetKeyDown(raiseLevelKey) && currentLevel < Grid.Instance.levels.Count - 1)
-            currentLevel++;
-        if (Input.GetKeyDown(lowerLevelKey) && currentLevel > 0)
-            currentLevel--;
-
-        // Delete tool (works anytime)
+        // Delete tool (anytime)
         if (Input.GetKeyDown(KeyCode.Delete))
-        {
-            Ray deleteRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(deleteRay, out RaycastHit deleteHit, 500f))
-            {
-                var root = deleteHit.transform.root;
-                if (root.CompareTag("PlacedPart"))
-                    Destroy(root.gameObject);
-            }
-        }
+            TryDeleteAtCursor();
 
-        // If no part selected, bail out
+        // If no part selected, exit
         if (currentPart == null) return;
 
-        // Don’t build through UI
+        // Block building through UI
         if (EventSystem.current.IsPointerOverGameObject()) return;
 
-        // Compute ghost position
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        Vector3 snapPos;
+        UpdateGhost();
 
-        if (currentPart.snapToSurface)
-        {
-            // Surface-snap: physics hit against real colliders
-            if (!Physics.Raycast(ray, out RaycastHit hit, 500f, surfaceMask))
-                return;
-
-            snapPos = hit.point + hit.normal * 0.01f;
-        }
-        else
-        {
-            // Grid-plane: infinite horizontal plane at currentLevel Y
-            Plane gridPlane = new Plane(
-                Vector3.up,
-                new Vector3(0f, Grid.Instance.YForLevel(currentLevel), 0f)
-            );
-
-            if (!gridPlane.Raycast(ray, out float enter))
-                return;
-
-            Vector3 planePoint = ray.GetPoint(enter);
-            snapPos = Grid.Instance.Snap(planePoint, currentLevel);
-        }
-
-        // Move ghost
-        if (ghost != null)
-            ghost.transform.position = snapPos;
-
-        // Rotate ghost
-        if (Input.GetKeyDown(rotateLeftKey)) RotateGhost(-90);
-        if (Input.GetKeyDown(rotateRightKey)) RotateGhost(90);
-
-        // Place the part
+        // Place on left-click
         if (Input.GetMouseButtonDown(0))
-            Place(snapPos);
+            TryPlace();
 
-        // Cancel building
+        // Cancel on right-click
         if (Input.GetMouseButtonDown(1))
             CancelBuild();
     }
 
-    private void Place(Vector3 snapPosition)
+    void UpdateGhost()
     {
-        var placed = Instantiate(
-            currentPart.prefab,
-            snapPosition,
-            Quaternion.Euler(0, ghostRotation, 0)
-        );
-        placed.tag = "PlacedPart";
+        if (ghost == null) return;
 
-        // If this part raises a new floor…
-        if (currentPart.raisesLevel)
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (!Physics.Raycast(ray, out RaycastHit hit, 500f, supportMask))
         {
-            float baseY = Grid.Instance.YForLevel(currentLevel);
-            float newY = baseY + currentPart.raiseHeight;
-            // AddLevel will dedupe & sort, and return the correct index
-            int newAddedLevel = Grid.Instance.AddLevel(newY);
+            TintGhost(Color.red);
+            return;
+        }
 
-            if (newAddedLevel <= currentLevel) currentLevel++;
+        var hitPart = hit.transform.GetComponent<PlacedPart>();
+        var hitPartHeightOffset = hitPart == null ? 0 : hitPart.partData.height;
+
+        Vector3 snapPos = currentPart.useGrid ? (Grid.Instance.Snap(hit.point) + Vector3.up * hitPartHeightOffset) : (hit.point + hit.normal * currentPart.surfaceOffset);
+
+        // Move ghost
+        Quaternion rot = Quaternion.Euler(0, ghostRotationY, 0);
+        if (currentPart.alignToSurface)
+            rot = Quaternion.LookRotation(-hit.normal);
+
+        ghost.transform.SetPositionAndRotation(snapPos, rot);
+
+        var ghostColor = IsPlacementValid(snapPos) ? Color.green : Color.red;
+        TintGhost(ghostColor);
+
+        // Rotate ghost
+        if (Input.GetKeyDown(rotateLeftKey)) RotateGhost(-90);
+        if (Input.GetKeyDown(rotateRightKey)) RotateGhost(90);
+    }
+
+    bool IsPlacementValid(Vector3 pos)
+    {
+        if (currentPart.useGrid && currentPart.isFloor && !Grid.Instance.IsAreaFree(pos, currentPart.footprint, ghostRotationY))
+        {
+            Debug.Log("Invalid placement cause area ain't free");
+            return false;
+        }
+
+        if (!currentPart.useGrid) // physics overlap only for freeform parts
+        {
+            Bounds b = CalculateBounds(pos, ghost.transform.rotation);
+            var hits = Physics.OverlapBox(b.center, b.extents * 0.95f,
+                                          ghost.transform.rotation, blockMask);
+            foreach (var h in hits) if (!h.isTrigger) return false;
+        }
+
+        return true; // hit exists by definition
+    }
+
+    void TryDeleteAtCursor()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out var hit, 100f))
+        {
+            if (hit.transform.root.CompareTag("PlacedPart")) Destroy(hit.transform.root.gameObject);
         }
     }
 
-    private void RotateGhost(int delta)
+    void TryPlace()
     {
-        ghostRotation = (ghostRotation + delta + 360) % 360;
-        if (ghost != null)
-            ghost.transform.rotation = Quaternion.Euler(0, ghostRotation, 0);
+        Vector3 pos = ghost.transform.position;
+        Quaternion rot = ghost.transform.rotation;
+        ghostRotationY = ghostRotationY % 360;
+
+        if (!IsPlacementValid(pos)) return;
+
+        GameObject placed = Instantiate(currentPart.prefab, pos, rot);
+        placed.tag = "PlacedPart";
+
+        if (currentPart.useGrid && currentPart.isFloor)
+        {
+            Grid.Instance.OccupyArea(pos, currentPart.footprint, ghostRotationY);
+
+            var pp = placed.AddComponent<PlacedPart>();
+            pp.rotY = ghostRotationY;
+            pp.partData = currentPart;
+        }
     }
 
-    /// <summary>Selects a new part to build, spawning its ghost.</summary>
+    void RotateGhost(int delta)
+    {
+        ghostRotationY = (ghostRotationY + delta + 360) % 360;
+    }
+
+    void TintGhost(Color c)
+    {
+        foreach (var r in ghost.GetComponentsInChildren<Renderer>())
+        {
+            if (r.material.HasProperty(_Color))
+                r.material.SetColor(_Color, c);
+            else
+                r.material.color = c;
+        }
+    }
+
+    Bounds CalculateBounds(Vector3 pos, Quaternion rot)
+    {
+        float cs = Grid.Instance.cellSize;
+        Vector3 size = new(
+            currentPart.footprint.x * cs,
+            currentPart.height,
+            currentPart.footprint.y * cs);
+
+        // if rotated 90/270 swap X/Z
+        if (ghostRotationY % 180 != 0)
+            (size.x, size.z) = (size.z, size.x);
+
+        var bounds = new Bounds(Vector3.zero, size)
+        {
+            center = pos + Vector3.up * (size.y * 0.5f)
+        };
+        return bounds;
+    }
+
+    /// <summary>Selects a part and spawns its ghost.</summary>
     public void SelectPart(PartData part)
     {
         CancelBuild();
         currentPart = part;
         if (part == null) return;
 
-        GameObject toSpawn = part.ghostPrefab != null
-            ? part.ghostPrefab
-            : part.prefab;
+        ghost = Instantiate(part.ghostPrefab != null ? part.ghostPrefab : part.prefab);
+        ghostRotationY = 0;
 
-        ghost = Instantiate(toSpawn);
-        ghostRotation = 0;
-
-        // If using fallback material, tint it
         if (part.ghostPrefab == null)
             ApplyGhostMaterial(ghost, fallbackGhostMat);
     }
 
-    private void CancelBuild()
+    void CancelBuild()
     {
         if (ghost != null) Destroy(ghost);
         ghost = null;
         currentPart = null;
     }
 
-    private void ApplyGhostMaterial(GameObject obj, Material mat)
+    void ApplyGhostMaterial(GameObject obj, Material mat)
     {
         foreach (var r in obj.GetComponentsInChildren<Renderer>())
             r.material = mat;
