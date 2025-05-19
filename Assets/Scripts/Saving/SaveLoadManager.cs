@@ -1,12 +1,7 @@
 ﻿/*
  * SaveLoadManager
  * ───────────────
- * World-level persistence for Castle Crafter.
- *  • Ctrl+S  → save to JSON
- *  • Ctrl+L  → load from JSON
- *
- * Files live in:  <persistentDataPath>/world.json
- *
+ * 
  * Each save entry stores:
  *   id   – PartData.id
  *   pos  – world position (Vector3)
@@ -40,22 +35,16 @@ public class SaveLoadManager : MonoBehaviour
         public List<SaveEntry> parts;
     }
 
-    const string FileName = "world.json";
+    public static SaveLoadManager Instance { get; private set; }
 
-    /* ───────────────────────────────────────── hotkeys ─── */
-
-    void Update()
+    private void Awake()
     {
-        bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-
-        if (ctrl && Input.GetKeyDown(KeyCode.S)) SaveWorld();
-        if (ctrl && Input.GetKeyDown(KeyCode.L)) LoadWorld();
+        Instance = this;
     }
 
-    /* ───────────────────────────────────────── SAVE ─── */
-
-    void SaveWorld()
+    public void SaveWorld(string filename)
     {
+        var path = PathWorld(filename);
         var list = new List<SaveEntry>();
 
         foreach (PlacedPart pp in FindObjectsOfType<PlacedPart>())
@@ -71,18 +60,19 @@ public class SaveLoadManager : MonoBehaviour
         SaveFile file = new() { parts = list };
         string json = JsonUtility.ToJson(file, true);
 
-        File.WriteAllText(PathWorld(), json);
-        Debug.Log($"[Save] {list.Count} parts → {PathWorld()}");
+        File.WriteAllText(path, json);
+        Debug.Log($"[Save] {list.Count} parts → {path}");
     }
 
     /* ───────────────────────────────────────── LOAD ─── */
 
-    void LoadWorld()
+    public void LoadWorld(string filename)
     {
-        string path = PathWorld();
+        var path = PathWorld(filename);
+
         if (!File.Exists(path))
         {
-            Debug.LogWarning("[Load] No save file found");
+            Debug.LogWarning($"[Load] No save file found at {path}");
             return;
         }
 
@@ -122,11 +112,11 @@ public class SaveLoadManager : MonoBehaviour
             count++;
         }
 
-        Debug.Log($"[Load] spawned {count} parts from save");
+        Debug.Log($"[Load] spawned {count} parts from save at {path}");
     }
 
     /* ───────────────────────────────────────── utils ─── */
 
-    static string PathWorld()
-        => Path.Combine(Application.persistentDataPath, FileName);
+    static string PathWorld(string filename)
+        => Path.Combine(Application.persistentDataPath, filename);
 }

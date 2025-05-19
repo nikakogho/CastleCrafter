@@ -12,5 +12,5 @@
 | ☑️ | **7** | `furniture-placement` | **Surface-snap furniture**                      | Place a table on a castle floor; rotate with **Q/E** before placing.                     |
 | ☑️ | **8** | `stairs-multilevel`   | **Multi-storey support**                        | Build stairs; place furniture on an upper floor that snaps correctly.                    |
 | ☑️ | **9** | `secret-door`         | **Interactable bookshelf door**                 | In FPS, press **F** to swing bookshelf and reveal a hidden passage or basement.          |
-| ⬜️ | **10**| `save-load`           | **JSON persistence**                            | **Ctrl+S** saves the build; **Ctrl+L** reloads it in a fresh session.                    |
+| ☑️ | **10**| `save-load`           | **JSON persistence**                            | **Ctrl+S** saves the build; **Ctrl+L** reloads it in a fresh session.                    |
 | ⬜️ | **11**| `texture-paint`       | **Runtime wall painting** *(optional)*          | Select wall → brush blends textures / colours live in play mode.                         |
