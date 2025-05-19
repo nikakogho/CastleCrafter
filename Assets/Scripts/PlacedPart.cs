@@ -9,6 +9,7 @@ public class PlacedPart : MonoBehaviour
     void OnDestroy()
     {
         if (Grid.Instance && partData.footprint == Vector2Int.zero) return;
+        if (!partData.isFloor) return;
 
         var footprint = rotY % 180 == 0
                            ? partData.footprint

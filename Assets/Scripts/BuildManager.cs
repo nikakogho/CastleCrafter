@@ -140,11 +140,11 @@ public class BuildManager : MonoBehaviour
         if (currentPart.useGrid && currentPart.isFloor)
         {
             Grid.Instance.OccupyArea(pos, currentPart.footprint, ghostRotationY);
-
-            var pp = placed.AddComponent<PlacedPart>();
-            pp.rotY = ghostRotationY;
-            pp.partData = currentPart;
         }
+
+        var pp = placed.AddComponent<PlacedPart>();
+        pp.rotY = ghostRotationY;
+        pp.partData = currentPart;
     }
 
     void RotateGhost(int delta)

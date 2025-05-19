@@ -3,6 +3,8 @@
 [CreateAssetMenu(menuName = "CastleCrafter/Part")]
 public class PartData : ScriptableObject
 {
+    new public string name;
+
     public GameObject prefab;
     public GameObject ghostPrefab;
 
